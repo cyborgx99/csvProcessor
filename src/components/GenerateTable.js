@@ -1,21 +1,10 @@
-import React, { Fragment, useRef, useState } from 'react';
-import CSVFileValidator from 'csv-file-validator';
+import React, { useRef, useState } from 'react';
 import Swal from 'sweetalert2';
 import {
-  isValidEmail,
-  validateAge,
-  validateExperience,
-  validateIncome,
-  convertStates,
-  validateStates,
-  formatPhoneNumber,
-  validatePhoneNumber,
-  validateDate,
-  validateLicense,
-  validateHasChildren,
-  convertHasChildren,
+  parseAndValidateCSV,
   validateRequiredFields,
 } from '../helpers/formatAndValidate';
+import { generateHeading, generateTableRows } from './renderTableFunctions';
 
 const GenerateTable = () => {
   const inputRef = useRef('');
@@ -31,48 +20,14 @@ const GenerateTable = () => {
         text: 'Only CSV files are accepted',
       });
       e.target.value = '';
-      setTableHeading('');
-      setTableRows('');
+      setTableHeading([]);
+      setTableRows([]);
       return;
     }
 
-    const config = {
-      headers: [
-        {
-          inputName: 'fullName',
-        },
-        {
-          inputName: 'phone',
-        },
-        {
-          inputName: 'email',
-        },
-        {
-          inputName: 'age',
-        },
-        {
-          inputName: 'experience',
-        },
-        {
-          inputName: 'yearlyIncome',
-        },
-        {
-          inputName: 'hasChildren',
-        },
-        {
-          inputName: 'licenseStates',
-        },
-        {
-          inputName: 'expirationDate',
-        },
-        {
-          inputName: 'licenseNumber',
-        },
-      ],
-      isHeaderNameOptional: true,
-    };
-
-    const { data } = await CSVFileValidator(e.target.files[0], config);
+    // parsing the file and receiving data
+    const data = await parseAndValidateCSV(e.target.files[0]);
+    console.log(data);
 
     if (data.length === 0) {
       Swal.fire({
@@ -80,8 +35,8 @@ const GenerateTable = () => {
         text: 'Perhaps CSV file is not valid',
       });
       e.target.value = '';
-      setTableHeading('');
-      setTableRows('');
+      setTableHeading([]);
+      setTableRows([]);
       return;
     }
 
@@ -109,141 +64,6 @@ const GenerateTable = () => {
     setTableRows(data.splice(1));
   };
 
-  const hasDuplicates = (value, index) => {
-    let array;
-
-    if (isValidEmail(value)) {
-      // if it's a valid email we're creating array of emails
-      array = tableRows && tableRows.map((row) => row.email.toLowerCase());
-    } else {
-      // creating array of phones
-      array = tableRows && tableRows.map((row) => row.phone.toLowerCase());
-    }
-
-    // detecting first duplicate value
-    const duplicated =
-      array.indexOf(value.toLowerCase()) !==
-      array.lastIndexOf(value.toLowerCase());
-
-    if (duplicated) {
-      // if it's found AND it equals index that we received then return THE OTHER found index + 1 (ID)
-      if (array.lastIndexOf(value.toLowerCase()) === index) {
-        return array.indexOf(value.toLowerCase()) + 1;
-      } else {
-        return array.lastIndexOf(value.toLowerCase()) + 1;
-      }
-    }
-  };
-
-  const checkIfNaN = (value) => {
-    return isNaN(value) ? '' : value;
-  };
-
-  const generateHeading = () => {
-    if (tableHeading) {
-      return tableHeading.map((heading, i) => {
-        const {
-          ID,
-          fullName,
-          DuplicateWith,
-          age,
-          email,
-          experience,
-          yearlyIncome,
-          hasChildren,
-          phone,
-          licenseStates,
-          licenseNumber,
-          expirationDate,
-        } = heading;
-        return (
-          <Fragment key={i}>
-            <th> {ID} </th>
-            <th> {fullName} </th>
-            <th> {phone} </th>
-            <th> {email} </th>
-            <th> {age} </th>
-            <th> {experience} </th>
-            <th> {yearlyIncome} </th>
-            <th> {hasChildren} </th>
-            <th> {licenseStates} </th>
-            <th> {expirationDate} </th>
-            <th> {licenseNumber} </th>
-            <th> {DuplicateWith} </th>
-          </Fragment>
-        );
-      });
-    } else {
-      return null;
-    }
-  };
-
-  const generateTableRows = () => {
-    if (tableRows) {
-      return tableRows.map((row, i) => {
-        const {
-          fullName,
-          age,
-          email,
-          experience,
-          yearlyIncome,
-          hasChildren,
-          phone,
-          licenseStates,
-          licenseNumber,
-          expirationDate,
-        } = row;
-
-        const fullNameStr = fullName.trim();
-        const phoneStr = phone.trim();
-        const emailStr = email.trim();
-        const ageInt = checkIfNaN(parseInt(age.trim()));
-        const expInt = checkIfNaN(parseInt(experience.trim()));
-        const incomeInt = checkIfNaN(
-          parseFloat(yearlyIncome.trim()).toFixed(2)
-        );
-        const hasChildBool = convertHasChildren(hasChildren.trim());
-        const expDate = expirationDate.trim();
-        const licNum = licenseNumber.trim();
-
-        return (
-          <tr key={i}>
-            <td> {i + 1} </td>
-            <td> {fullNameStr} </td>
-            <td
-              className={`${
-                hasDuplicates(phoneStr) && 'red-highlight'
-              }  ${validatePhoneNumber(phoneStr)}`}
-            >
-              {formatPhoneNumber(phoneStr)}
-            </td>
-            <td
-              className={`${hasDuplicates(emailStr) && 'red-highlight'} ${
-                !isValidEmail(emailStr) && 'red-highlight'
-              }`}
-            >
-              {emailStr}
-            </td>
-            <td className={validateAge(ageInt)}>{ageInt}</td>
-            <td className={validateExperience(expInt, ageInt)}>{expInt}</td>
-            <td className={validateIncome(incomeInt)}>{incomeInt}</td>
-            <td className={validateHasChildren(hasChildBool)}>
-              {hasChildBool}
-            </td>
-            <td className={validateStates(licenseStates)}>
-              {convertStates(licenseStates)}
-            </td>
-            <td className={validateDate(expDate)}>{expDate}</td>
-            <td className={validateLicense(licNum)}>{licNum}</td>
-            <td> {hasDuplicates(phone, i)} </td>
-          </tr>
-        );
-      });
-    } else {
-      return null;
-    }
-  };
-
   return (
     <div className='container'>
       <button
@@ -260,9 +80,9 @@ const GenerateTable = () => {
       />
       <table className='table'>
         <thead>
-          <tr>{generateHeading()}</tr>
+          <tr>{generateHeading(tableHeading)}</tr>
         </thead>
-        <tbody>{generateTableRows()}</tbody>
+        <tbody>{generateTableRows(tableRows)}</tbody>
       </table>
     </div>
   );

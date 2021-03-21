@@ -1,6 +1,77 @@
 import states from 'us-state-converter';
 import { isPossiblePhoneNumber, parsePhoneNumber } from 'libphonenumber-js';
 import moment from 'moment';
+import CSVFileValidator from 'csv-file-validator';
+
+export const parseAndValidateCSV = async (fileInput) => {
+  const config = {
+    headers: [
+      {
+        inputName: 'fullName',
+      },
+      {
+        inputName: 'phone',
+      },
+      {
+        inputName: 'email',
+      },
+      {
+        inputName: 'age',
+      },
+      {
+        inputName: 'experience',
+      },
+      {
+        inputName: 'yearlyIncome',
+      },
+      {
+        inputName: 'hasChildren',
+      },
+      {
+        inputName: 'licenseStates',
+      },
+      {
+        inputName: 'expirationDate',
+      },
+      {
+        inputName: 'licenseNumber',
+      },
+    ],
+    isHeaderNameOptional: true,
+  };
+
+  const { data } = await CSVFileValidator(fileInput, config);
+
+  return data;
+};
+
+export const hasDuplicates = (receivedArray, value, index) => {
+  let array;
+
+  if (isValidEmail(value)) {
+    // if it's a valid email we're creating array of emails
+    array =
+      receivedArray && receivedArray.map((row) => row.email.toLowerCase());
+  } else {
+    // creating array of phones
+    array =
+      receivedArray && receivedArray.map((row) => row.phone.toLowerCase());
+  }
+
+  // detecting first duplicate value
+  const duplicated =
+    array.indexOf(value.toLowerCase()) !==
+    array.lastIndexOf(value.toLowerCase());
+
+  if (duplicated) {
+    // if it's found AND it equals to the index that we received then return THE OTHER found index + 1 (ID)
+    if (array.lastIndexOf(value.toLowerCase()) === index) {
+      return array.indexOf(value.toLowerCase()) + 1;
+    } else {
+      return array.lastIndexOf(value.toLowerCase()) + 1;
+    }
+  }
+};
 
 export const validateRequiredFields = (email, fullName, phone) => {
   const requiredColumns = ['full name', 'email', 'phone'];
@@ -34,7 +105,7 @@ export const validateExperience = (exp, age) => {
 };
 
 export const validateIncome = (income) => {
-  if (income > 1000000) {
+  if (income > 1000000 || income < 0) {
     return 'red-highlight';
   }
 };
@@ -53,7 +124,7 @@ export const convertHasChildren = (value) => {
 
 export const validateHasChildren = (value) => {
   if (value) {
-    if (value === 'TRUE' || value === 'FALSE') {
+    if (value.toLowerCase() === 'true' || value.toLowerCase() === 'false') {
       return;
     } else {
       return 'red-highlight';
@@ -99,12 +170,13 @@ export const convertStates = (stateStr) => {
 };
 
 export const formatPhoneNumber = (value) => {
-  // formatting into a correct US phone number
+  // formatting into a correct phone number
+
   return parsePhoneNumber(value, 'US').number;
 };
 
 export const validatePhoneNumber = (value) => {
-  if (isPossiblePhoneNumber(value, 'US')) {
+  if (isPossiblePhoneNumber(value)) {
     return undefined;
   } else {
     return 'red-highlight';
@@ -141,4 +213,8 @@ export const validateLicense = (value) => {
       return 'red-highlight';
     }
   }
+};
+
+export const checkIfNaN = (value) => {
+  return isNaN(value) ? '' : value;
 };
