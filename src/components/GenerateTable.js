@@ -74,6 +74,17 @@ const GenerateTable = () => {
 
     const { data } = await CSVFileValidator(e.target.files[0], config);
 
+    if (data.length === 0) {
+      Swal.fire({
+        title: 'Something went wrong',
+        text: 'Perhaps CSV file is not valid',
+      });
+      e.target.value = '';
+      setTableHeading('');
+      setTableRows('');
+      return;
+    }
+
     const email = data[0].email.toLowerCase();
     const fullName = data[0].fullName.toLowerCase();
     const phone = data[0].phone.toLowerCase();
